@@ -14,15 +14,18 @@ app.get("/", (req, res) => {
   res.send("Backend server is running");
 });
 
+// API route
+app.get("/api/message", (req, res) => {
+  res.json({ message: "Hello from backend" });
+});
+
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URL)
 .then(() => console.log("MongoDB Connected"))
 .catch((err) => console.log(err));
 
-// Port
 const PORT = process.env.PORT || 5000;
 
-// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
