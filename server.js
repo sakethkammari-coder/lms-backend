@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 
+const Course = require("./models/Course"); // import course model
+
 const app = express();
 
 // Middleware
@@ -14,9 +16,24 @@ app.get("/", (req, res) => {
   res.send("Backend server is running");
 });
 
-// API route
+// Test API
 app.get("/api/message", (req, res) => {
   res.json({ message: "Hello from backend" });
+});
+
+// Get courses from MongoDB
+app.get("/api/courses", async (req, res) => {
+  try {
+
+    const courses = await Course.find();
+
+    res.json(courses);
+
+  } catch (error) {
+
+    res.status(500).json({ message: "Error fetching courses" });
+
+  }
 });
 
 // MongoDB connection
