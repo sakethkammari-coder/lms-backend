@@ -14,166 +14,241 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const SECRET_KEY = "MY_SECRET_KEY";
-
+const SECRET_KEY = process.env.JWT_SECRET || "MY_SECRET_KEY";
 
 // Test route
 app.get("/", (req, res) => {
-  res.send("Backend server is running");
+res.send("Backend server is running");
 });
-
-
-// Test API
-app.get("/api/message", (req, res) => {
-  res.json({ message: "Hello from backend" });
-});
-
 
 // Get all courses
 app.get("/api/courses", async (req, res) => {
-  try {
+try {
 
-    const courses = await Course.find();
 
-    res.json(courses);
+const courses = await Course.find();
 
-  } catch (error) {
+res.json(courses);
 
-    console.log(error);
-    res.status(500).json({ message: "Error fetching courses" });
 
-  }
+} catch (error) {
+
+
+console.log(error);
+res.status(500).json({ message: "Error fetching courses" });
+
+
+}
 });
 
+// Get single course by ID
+app.get("/api/courses/:id", async (req, res) => {
+
+try {
+
+
+const course = await Course.findById(req.params.id);
+
+if (!course) {
+  return res.status(404).json({
+    message: "Course not found"
+  });
+}
+
+res.json(course);
+
+
+} catch (error) {
+
+
+console.log(error);
+res.status(500).json({
+  message: "Error fetching course"
+});
+
+
+}
+
+});
 
 // Signup API
 app.post("/api/signup", async (req, res) => {
 
-  try {
+try {
 
-    const { name, email, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
+const { name, email, password } = req.body;
 
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
+const existingUser = await User.findOne({ email });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+if (existingUser) {
+  return res.status(400).json({
+    message: "User already exists"
+  });
+}
 
-    const newUser = new User({
-      name,
-      email,
-      password: hashedPassword
-    });
+const hashedPassword = await bcrypt.hash(password, 10);
 
-    await newUser.save();
-
-    res.json({ message: "Signup successful" });
-
-  } catch (error) {
-
-    console.log(error);
-    res.status(500).json({ message: "Signup error" });
-
-  }
-
+const newUser = new User({
+  name,
+  email,
+  password: hashedPassword
 });
 
+await newUser.save();
+
+res.json({ message: "Signup successful" });
+
+
+} catch (error) {
+
+
+console.log(error);
+res.status(500).json({ message: "Signup error" });
+
+
+}
+
+});
 
 // Login API
 app.post("/api/login", async (req, res) => {
 
-  try {
+try {
 
-    const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+const { email, password } = req.body;
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+const user = await User.findOne({ email });
 
-    const validPassword = await bcrypt.compare(password, user.password);
+if (!user) {
+  return res.status(404).json({
+    message: "User not found"
+  });
+}
 
-    if (!validPassword) {
-      return res.status(401).json({ message: "Incorrect password" });
-    }
+const validPassword = await bcrypt.compare(password, user.password);
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      SECRET_KEY,
-      { expiresIn: "1d" }
-    );
+if (!validPassword) {
+  return res.status(401).json({
+    message: "Incorrect password"
+  });
+}
 
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email
-      }
-    });
+const token = jwt.sign(
+  { id: user._id, email: user.email },
+  SECRET_KEY,
+  { expiresIn: "1d" }
+);
 
-  } catch (error) {
-
-    console.log(error);
-    res.status(500).json({ message: "Login error" });
-
+res.json({
+  token,
+  user: {
+    id: user._id,
+    name: user.name,
+    email: user.email
   }
-
 });
 
+
+} catch (error) {
+
+
+console.log(error);
+res.status(500).json({ message: "Login error" });
+
+
+}
+
+});
 
 // JWT middleware
 function authenticateToken(req, res, next) {
 
-  const token = req.headers.authorization;
+const authHeader = req.headers.authorization;
 
-  if (!token) {
-    return res.status(401).json({ message: "Access denied" });
-  }
+if (!authHeader) {
+return res.status(401).json({
+message: "Access denied"
+});
+}
 
-  try {
+const token = authHeader.split(" ")[1];
 
-    const verified = jwt.verify(token, SECRET_KEY);
+try {
 
-    req.user = verified;
 
-    next();
+const verified = jwt.verify(token, SECRET_KEY);
 
-  } catch (error) {
+req.user = verified;
 
-    res.status(400).json({ message: "Invalid token" });
+next();
 
-  }
+
+} catch (error) {
+
+
+res.status(400).json({
+  message: "Invalid token"
+});
+
 
 }
 
+}
 
-// Protected enroll API
+// Enroll API
 app.post("/api/enroll", authenticateToken, async (req, res) => {
 
-  const userId = req.user.id;
-  const { courseId } = req.body;
+try {
 
-  res.json({
-    message: "Enrollment successful",
-    userId,
-    courseId
-  });
 
+const userId = req.user.id;
+const { courseId } = req.body;
+
+const existing = await Enrollment.findOne({
+  userId,
+  courseId
 });
 
+if (existing) {
+  return res.json({
+    message: "Already enrolled"
+  });
+}
+
+const enrollment = new Enrollment({
+  userId,
+  courseId
+});
+
+await enrollment.save();
+
+res.json({
+  message: "Enrollment successful"
+});
+
+
+} catch (error) {
+
+
+console.log(error);
+res.status(500).json({
+  message: "Enrollment error"
+});
+
+
+}
+
+});
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URL)
 .then(() => console.log("MongoDB Connected"))
 .catch((err) => console.log(err));
 
-
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+console.log(`Server running on port ${PORT}`);
 });
