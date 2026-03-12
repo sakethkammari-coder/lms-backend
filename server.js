@@ -16,37 +16,42 @@ app.use(express.json());
 
 const SECRET_KEY = process.env.JWT_SECRET || "MY_SECRET_KEY";
 
-// Test route
+// Root route
 app.get("/", (req, res) => {
 res.send("Backend server is running");
 });
 
 // Get all courses
 app.get("/api/courses", async (req, res) => {
+
 try {
 
-
+```
 const courses = await Course.find();
 
 res.json(courses);
-
+```
 
 } catch (error) {
 
-
+```
 console.log(error);
-res.status(500).json({ message: "Error fetching courses" });
 
+res.status(500).json({
+  message: "Error fetching courses"
+});
+```
 
 }
+
 });
 
-// Get single course by ID
+// Get single course
 app.get("/api/courses/:id", async (req, res) => {
 
 try {
 
-
+```
 const course = await Course.findById(req.params.id);
 
 if (!course) {
@@ -56,27 +61,28 @@ if (!course) {
 }
 
 res.json(course);
-
+```
 
 } catch (error) {
 
-
+```
 console.log(error);
+
 res.status(500).json({
   message: "Error fetching course"
 });
-
+```
 
 }
 
 });
 
-// Signup API
+// Signup
 app.post("/api/signup", async (req, res) => {
 
 try {
 
-
+```
 const { name, email, password } = req.body;
 
 const existingUser = await User.findOne({ email });
@@ -97,26 +103,31 @@ const newUser = new User({
 
 await newUser.save();
 
-res.json({ message: "Signup successful" });
-
+res.json({
+  message: "Signup successful"
+});
+```
 
 } catch (error) {
 
-
+```
 console.log(error);
-res.status(500).json({ message: "Signup error" });
 
+res.status(500).json({
+  message: "Signup error"
+});
+```
 
 }
 
 });
 
-// Login API
+// Login
 app.post("/api/login", async (req, res) => {
 
 try {
 
-
+```
 const { email, password } = req.body;
 
 const user = await User.findOne({ email });
@@ -149,14 +160,17 @@ res.json({
     email: user.email
   }
 });
-
+```
 
 } catch (error) {
 
-
+```
 console.log(error);
-res.status(500).json({ message: "Login error" });
 
+res.status(500).json({
+  message: "Login error"
+});
+```
 
 }
 
@@ -206,9 +220,11 @@ try {
 const userId = req.user.id;
 const { courseId } = req.body;
 
+const courseObjectId = new mongoose.Types.ObjectId(courseId);
+
 const existing = await Enrollment.findOne({
   userId,
-  courseId
+  courseId: courseObjectId
 });
 
 if (existing) {
@@ -219,7 +235,7 @@ if (existing) {
 
 const enrollment = new Enrollment({
   userId,
-  courseId
+  courseId: courseObjectId
 });
 
 await enrollment.save();
@@ -232,9 +248,41 @@ res.json({
 } catch (error) {
 
 
-console.log(error);
+console.log("Enroll Error:", error);
+
 res.status(500).json({
   message: "Enrollment error"
+});
+
+
+}
+
+});
+
+// Get user's enrolled courses
+app.get("/api/my-courses", authenticateToken, async (req, res) => {
+
+try {
+
+
+const userId = req.user.id;
+
+const enrollments = await Enrollment
+  .find({ userId })
+  .populate("courseId");
+
+const courses = enrollments.map(e => e.courseId);
+
+res.json(courses);
+
+
+} catch (error) {
+
+
+console.log(error);
+
+res.status(500).json({
+  message: "Error fetching enrolled courses"
 });
 
 
