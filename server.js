@@ -26,21 +26,21 @@ app.get("/api/courses", async (req, res) => {
 
 try {
 
-```
+
 const courses = await Course.find();
 
 res.json(courses);
-```
+
 
 } catch (error) {
 
-```
+
 console.log(error);
 
 res.status(500).json({
   message: "Error fetching courses"
 });
-```
+
 
 }
 
@@ -51,7 +51,7 @@ app.get("/api/courses/:id", async (req, res) => {
 
 try {
 
-```
+
 const course = await Course.findById(req.params.id);
 
 if (!course) {
@@ -61,17 +61,17 @@ if (!course) {
 }
 
 res.json(course);
-```
+
 
 } catch (error) {
 
-```
+
 console.log(error);
 
 res.status(500).json({
   message: "Error fetching course"
 });
-```
+
 
 }
 
@@ -82,7 +82,7 @@ app.post("/api/signup", async (req, res) => {
 
 try {
 
-```
+
 const { name, email, password } = req.body;
 
 const existingUser = await User.findOne({ email });
@@ -106,17 +106,17 @@ await newUser.save();
 res.json({
   message: "Signup successful"
 });
-```
+
 
 } catch (error) {
 
-```
+
 console.log(error);
 
 res.status(500).json({
   message: "Signup error"
 });
-```
+
 
 }
 
@@ -127,7 +127,7 @@ app.post("/api/login", async (req, res) => {
 
 try {
 
-```
+
 const { email, password } = req.body;
 
 const user = await User.findOne({ email });
@@ -160,17 +160,17 @@ res.json({
     email: user.email
   }
 });
-```
+
 
 } catch (error) {
 
-```
+
 console.log(error);
 
 res.status(500).json({
   message: "Login error"
 });
-```
+
 
 }
 
