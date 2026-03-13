@@ -8,6 +8,7 @@ require("dotenv").config();
 const Course = require("./models/Course");
 const User = require("./models/User");
 const Enrollment = require("./models/Enrollment");
+const adminOnly = require("./middleware/admin");
 
 const app = express();
 
@@ -20,6 +21,47 @@ const SECRET_KEY = process.env.JWT_SECRET || "MY_SECRET_KEY";
 app.get("/", (req, res) => {
 res.send("Backend server is running");
 });
+
+// ========================
+// AUTH MIDDLEWARE
+// ========================
+function authenticateToken(req, res, next) {
+
+const authHeader = req.headers.authorization;
+
+if (!authHeader) {
+return res.status(401).json({
+message: "Access denied"
+});
+}
+
+const token = authHeader.split(" ")[1];
+
+try {
+
+
+const verified = jwt.verify(token, SECRET_KEY);
+
+req.user = verified;
+
+next();
+
+
+} catch (error) {
+
+
+res.status(400).json({
+  message: "Invalid token"
+});
+
+
+}
+
+}
+
+// ========================
+// COURSE APIs
+// ========================
 
 // Get all courses
 app.get("/api/courses", async (req, res) => {
@@ -76,6 +118,10 @@ res.status(500).json({
 }
 
 });
+
+// ========================
+// AUTH APIs
+// ========================
 
 // Signup
 app.post("/api/signup", async (req, res) => {
@@ -147,7 +193,11 @@ if (!validPassword) {
 }
 
 const token = jwt.sign(
-  { id: user._id, email: user.email },
+  {
+    id: user._id,
+    email: user.email,
+    role: user.role
+  },
   SECRET_KEY,
   { expiresIn: "1d" }
 );
@@ -157,7 +207,8 @@ res.json({
   user: {
     id: user._id,
     name: user.name,
-    email: user.email
+    email: user.email,
+    role: user.role
   }
 });
 
@@ -176,42 +227,11 @@ res.status(500).json({
 
 });
 
-// JWT middleware
-function authenticateToken(req, res, next) {
+// ========================
+// ENROLLMENT APIs
+// ========================
 
-const authHeader = req.headers.authorization;
-
-if (!authHeader) {
-return res.status(401).json({
-message: "Access denied"
-});
-}
-
-const token = authHeader.split(" ")[1];
-
-try {
-
-
-const verified = jwt.verify(token, SECRET_KEY);
-
-req.user = verified;
-
-next();
-
-
-} catch (error) {
-
-
-res.status(400).json({
-  message: "Invalid token"
-});
-
-
-}
-
-}
-
-// Enroll API
+// Enroll course
 app.post("/api/enroll", authenticateToken, async (req, res) => {
 
 try {
@@ -290,7 +310,115 @@ res.status(500).json({
 
 });
 
-// MongoDB connection
+// ========================
+// ADMIN APIs
+// ========================
+
+// Add course
+app.post("/api/admin/course", authenticateToken, adminOnly, async (req, res) => {
+
+try {
+
+
+const course = new Course(req.body);
+
+await course.save();
+
+res.json({
+  message: "Course added successfully"
+});
+
+
+} catch (error) {
+
+
+res.status(500).json({
+  message: "Error adding course"
+});
+
+
+}
+
+});
+
+// Update course
+app.put("/api/admin/course/:id", authenticateToken, adminOnly, async (req, res) => {
+
+try {
+
+
+await Course.findByIdAndUpdate(req.params.id, req.body);
+
+res.json({
+  message: "Course updated"
+});
+
+
+} catch (error) {
+
+res.status(500).json({
+  message: "Update failed"
+});
+
+
+}
+
+});
+
+// Delete course
+app.delete("/api/admin/course/:id", authenticateToken, adminOnly, async (req, res) => {
+
+try {
+
+
+await Course.findByIdAndDelete(req.params.id);
+
+res.json({
+  message: "Course deleted"
+});
+
+
+} catch (error) {
+
+
+res.status(500).json({
+  message: "Delete failed"
+});
+
+
+}
+
+});
+
+// Remove user
+app.delete("/api/admin/user/:id", authenticateToken, adminOnly, async (req, res) => {
+
+try {
+
+
+await User.findByIdAndDelete(req.params.id);
+
+res.json({
+  message: "User removed"
+});
+
+
+} catch (error) {
+
+
+res.status(500).json({
+  message: "Error deleting user"
+});
+
+
+}
+
+});
+
+// ========================
+// DATABASE CONNECTION
+// ========================
+
 mongoose.connect(process.env.MONGO_URL)
 .then(() => console.log("MongoDB Connected"))
 .catch((err) => console.log(err));
