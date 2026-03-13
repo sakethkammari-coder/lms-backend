@@ -311,7 +311,11 @@ app.put("/api/admin/course/:id", authenticateToken, adminOnly, async (req, res) 
 try {
 
 
-await Course.findByIdAndUpdate(req.params.id, req.body);
+await Course.findByIdAndUpdate(
+req.params.id,
+req.body,
+{ new:true }
+);
 
 res.json({ message: "Course updated" });
 
