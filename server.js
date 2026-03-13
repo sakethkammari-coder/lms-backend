@@ -17,7 +17,6 @@ app.use(express.json());
 
 const SECRET_KEY = process.env.JWT_SECRET || "MY_SECRET_KEY";
 
-// Root route
 app.get("/", (req, res) => {
 res.send("Backend server is running");
 });
@@ -30,9 +29,7 @@ function authenticateToken(req, res, next) {
 const authHeader = req.headers.authorization;
 
 if (!authHeader) {
-return res.status(401).json({
-message: "Access denied"
-});
+return res.status(401).json({ message: "Access denied" });
 }
 
 const token = authHeader.split(" ")[1];
@@ -41,7 +38,6 @@ try {
 
 
 const verified = jwt.verify(token, SECRET_KEY);
-
 req.user = verified;
 
 next();
@@ -50,9 +46,7 @@ next();
 } catch (error) {
 
 
-res.status(400).json({
-  message: "Invalid token"
-});
+res.status(400).json({ message: "Invalid token" });
 
 
 }
@@ -63,14 +57,12 @@ res.status(400).json({
 // COURSE APIs
 // ========================
 
-// Get all courses
 app.get("/api/courses", async (req, res) => {
 
 try {
 
 
 const courses = await Course.find();
-
 res.json(courses);
 
 
@@ -78,17 +70,13 @@ res.json(courses);
 
 
 console.log(error);
-
-res.status(500).json({
-  message: "Error fetching courses"
-});
+res.status(500).json({ message: "Error fetching courses" });
 
 
 }
 
 });
 
-// Get single course
 app.get("/api/courses/:id", async (req, res) => {
 
 try {
@@ -97,9 +85,7 @@ try {
 const course = await Course.findById(req.params.id);
 
 if (!course) {
-  return res.status(404).json({
-    message: "Course not found"
-  });
+  return res.status(404).json({ message: "Course not found" });
 }
 
 res.json(course);
@@ -109,10 +95,7 @@ res.json(course);
 
 
 console.log(error);
-
-res.status(500).json({
-  message: "Error fetching course"
-});
+res.status(500).json({ message: "Error fetching course" });
 
 
 }
@@ -123,7 +106,6 @@ res.status(500).json({
 // AUTH APIs
 // ========================
 
-// Signup
 app.post("/api/signup", async (req, res) => {
 
 try {
@@ -134,9 +116,7 @@ const { name, email, password } = req.body;
 const existingUser = await User.findOne({ email });
 
 if (existingUser) {
-  return res.status(400).json({
-    message: "User already exists"
-  });
+  return res.status(400).json({ message: "User already exists" });
 }
 
 const hashedPassword = await bcrypt.hash(password, 10);
@@ -149,26 +129,20 @@ const newUser = new User({
 
 await newUser.save();
 
-res.json({
-  message: "Signup successful"
-});
+res.json({ message: "Signup successful" });
 
 
 } catch (error) {
 
 
 console.log(error);
-
-res.status(500).json({
-  message: "Signup error"
-});
+res.status(500).json({ message: "Signup error" });
 
 
 }
 
 });
 
-// Login
 app.post("/api/login", async (req, res) => {
 
 try {
@@ -179,17 +153,13 @@ const { email, password } = req.body;
 const user = await User.findOne({ email });
 
 if (!user) {
-  return res.status(404).json({
-    message: "User not found"
-  });
+  return res.status(404).json({ message: "User not found" });
 }
 
 const validPassword = await bcrypt.compare(password, user.password);
 
 if (!validPassword) {
-  return res.status(401).json({
-    message: "Incorrect password"
-  });
+  return res.status(401).json({ message: "Incorrect password" });
 }
 
 const token = jwt.sign(
@@ -217,10 +187,7 @@ res.json({
 
 
 console.log(error);
-
-res.status(500).json({
-  message: "Login error"
-});
+res.status(500).json({ message: "Login error" });
 
 
 }
@@ -231,7 +198,6 @@ res.status(500).json({
 // ENROLLMENT APIs
 // ========================
 
-// Enroll course
 app.post("/api/enroll", authenticateToken, async (req, res) => {
 
 try {
@@ -240,55 +206,43 @@ try {
 const userId = req.user.id;
 const { courseId } = req.body;
 
-const courseObjectId = new mongoose.Types.ObjectId(courseId);
-
 const existing = await Enrollment.findOne({
   userId,
-  courseId: courseObjectId
+  courseId
 });
 
 if (existing) {
-  return res.json({
-    message: "Already enrolled"
-  });
+  return res.json({ message: "Already enrolled" });
 }
 
 const enrollment = new Enrollment({
   userId,
-  courseId: courseObjectId
+  courseId
 });
 
 await enrollment.save();
 
-res.json({
-  message: "Enrollment successful"
-});
+res.json({ message: "Enrollment successful" });
 
 
 } catch (error) {
 
 
-console.log("Enroll Error:", error);
-
-res.status(500).json({
-  message: "Enrollment error"
-});
+console.log(error);
+res.status(500).json({ message: "Enrollment error" });
 
 
 }
 
 });
 
-// Get user's enrolled courses
 app.get("/api/my-courses", authenticateToken, async (req, res) => {
 
 try {
 
 
-const userId = req.user.id;
-
 const enrollments = await Enrollment
-  .find({ userId })
+  .find({ userId: req.user.id })
   .populate("courseId");
 
 const courses = enrollments.map(e => e.courseId);
@@ -300,10 +254,7 @@ res.json(courses);
 
 
 console.log(error);
-
-res.status(500).json({
-  message: "Error fetching enrolled courses"
-});
+res.status(500).json({ message: "Error fetching enrolled courses" });
 
 
 }
@@ -314,34 +265,47 @@ res.status(500).json({
 // ADMIN APIs
 // ========================
 
-// Add course
-app.post("/api/admin/course", authenticateToken, adminOnly, async (req, res) => {
+app.get("/api/admin/users", authenticateToken, adminOnly, async (req, res) => {
 
 try {
 
 
-const course = new Course(req.body);
+const users = await User.find().select("-password");
 
-await course.save();
-
-res.json({
-  message: "Course added successfully"
-});
+res.json(users);
 
 
 } catch (error) {
 
 
-res.status(500).json({
-  message: "Error adding course"
-});
+res.status(500).json({ message: "Error fetching users" });
 
 
 }
 
 });
 
-// Update course
+app.post("/api/admin/course", authenticateToken, adminOnly, async (req, res) => {
+
+try {
+
+
+const course = new Course(req.body);
+await course.save();
+
+res.json({ message: "Course added successfully" });
+
+
+} catch (error) {
+
+
+res.status(500).json({ message: "Error adding course" });
+
+
+}
+
+});
+
 app.put("/api/admin/course/:id", authenticateToken, adminOnly, async (req, res) => {
 
 try {
@@ -349,23 +313,19 @@ try {
 
 await Course.findByIdAndUpdate(req.params.id, req.body);
 
-res.json({
-  message: "Course updated"
-});
+res.json({ message: "Course updated" });
 
 
 } catch (error) {
 
-res.status(500).json({
-  message: "Update failed"
-});
+
+res.status(500).json({ message: "Update failed" });
 
 
 }
 
 });
 
-// Delete course
 app.delete("/api/admin/course/:id", authenticateToken, adminOnly, async (req, res) => {
 
 try {
@@ -373,24 +333,19 @@ try {
 
 await Course.findByIdAndDelete(req.params.id);
 
-res.json({
-  message: "Course deleted"
-});
+res.json({ message: "Course deleted" });
 
 
 } catch (error) {
 
 
-res.status(500).json({
-  message: "Delete failed"
-});
+res.status(500).json({ message: "Delete failed" });
 
 
 }
 
 });
 
-// Remove user
 app.delete("/api/admin/user/:id", authenticateToken, adminOnly, async (req, res) => {
 
 try {
@@ -398,17 +353,13 @@ try {
 
 await User.findByIdAndDelete(req.params.id);
 
-res.json({
-  message: "User removed"
-});
+res.json({ message: "User removed" });
 
 
 } catch (error) {
 
 
-res.status(500).json({
-  message: "Error deleting user"
-});
+res.status(500).json({ message: "Error deleting user" });
 
 
 }
@@ -416,7 +367,7 @@ res.status(500).json({
 });
 
 // ========================
-// DATABASE CONNECTION
+// DATABASE
 // ========================
 
 mongoose.connect(process.env.MONGO_URL)
